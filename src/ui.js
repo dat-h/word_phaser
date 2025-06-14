@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { LetterCharacter, Word, WordNode } from './logic.js';
+import { WavyWord } from './wavyWord.js';
 
 class MainScene extends Phaser.Scene {
   constructor() {
@@ -16,21 +17,18 @@ class MainScene extends Phaser.Scene {
     this.createStarfield();
 
     // Display 'welcome' at the top center as individual letters for animation
-    this.welcomeLetters = [];
     const welcomeText = 'war game';
     const font = 'nokia16';
     const fontSize = 32;
     const startX = this.cameras.main.width / 2 - (welcomeText.length * fontSize) / 2 + fontSize / 2;
-    for (let i = 0; i < welcomeText.length; i++) {
-      const letter = this.add.bitmapText(
-        startX + i * fontSize,
-        40,
-        font,
-        welcomeText[i],
-        fontSize
-      ).setOrigin(0.5, 0);
-      this.welcomeLetters.push(letter);
-    }
+
+    this.gameTitle = this.add.wavyWord(
+      startX,
+      30,
+      font,
+      welcomeText,
+      fontSize
+    ).setOrigin(0.5, 0);
 
     // Display the word 'start' in the center of the screen using the bitmap font
     this.startText = this.add.bitmapText(
@@ -65,7 +63,7 @@ class MainScene extends Phaser.Scene {
   startMainGame() {
     // Hide start and welcome text
     if (this.startText) this.startText.setVisible(false);
-    if (this.welcomeLetters) this.welcomeLetters.forEach(l => l.setVisible(false));
+    if (this.gameTitle) this.gameTitle.setVisible(false);
 
     // Show the enter word screen
     this.showEnterWordScreen();
@@ -75,9 +73,39 @@ class MainScene extends Phaser.Scene {
     // Display 'Enter word' at the top
     const font = 'nokia16';
     const fontSize = 32;
+
+    // Example dictionary of valid words
+    this.dictionary = ['apple', 'grape', 'peach', 'melon', 'lemon', 'berry', 'mango', 'plums', 'chess', 'words'];
+
+    // Display 'upcoming word:' and a random word at the top
+    const bottomY = this.cameras.main.height - 60;
+    const topY = 50;     
+    this.upcomingWordLabel = this.add.bitmapText(
+      this.cameras.main.width / 2,
+      topY,
+      font,
+      'upcoming word:',
+      fontSize
+    ).setOrigin(0.5, 0);
+    this.upcomingWord = Phaser.Utils.Array.GetRandom(this.dictionary);
+    this.upcomingWordText = this.add.bitmapText(
+      this.cameras.main.width / 2,
+      topY + 36,
+      font,
+      this.upcomingWord,
+      fontSize
+    ).setOrigin(0.5, 0); 
+
+
+    // Focus invisible input for keyboard capture
+    if (window.focusInvisibleInput) {
+      window.focusInvisibleInput();
+    }
+
+    const slotsY = this.cameras.main.height / 2;
     this.enterWordTitle = this.add.bitmapText(
       this.cameras.main.width / 2,
-      40,
+      slotsY - 60,
       font,
       'Enter word',
       fontSize
@@ -87,7 +115,6 @@ class MainScene extends Phaser.Scene {
     this.enteredWord = '';
     this.letterSlots = [];
     const slotSpacing = 40;
-    const slotsY = this.cameras.main.height / 2;
     const startX = this.cameras.main.width / 2 - (slotSpacing * 2);
     for (let i = 0; i < 5; i++) {
       const slot = this.add.bitmapText(
@@ -117,31 +144,6 @@ class MainScene extends Phaser.Scene {
       }
     });
     this.letterSlotOverlay.setDepth(10); // ensure it's above the stars but below text
-
-    // Example dictionary of valid words
-    this.dictionary = ['apple', 'grape', 'peach', 'melon', 'lemon', 'berry', 'mango', 'plums', 'chess', 'words'];
-
-    // Display 'upcoming word:' and a random word at the bottom
-    const bottomY = this.cameras.main.height - 60;
-    this.upcomingWordLabel = this.add.bitmapText(
-      this.cameras.main.width / 2,
-      bottomY - 50,
-      font,
-      'upcoming word:',
-      fontSize
-    ).setOrigin(0.5, 0);
-    this.upcomingWord = Phaser.Utils.Array.GetRandom(this.dictionary);
-    this.upcomingWordText = this.add.bitmapText(
-      this.cameras.main.width / 2,
-      bottomY + 36 - 50,
-      font,
-      this.upcomingWord,
-      fontSize
-    ).setOrigin(0.5, 0); 
-    // Focus invisible input for keyboard capture
-    if (window.focusInvisibleInput) {
-      window.focusInvisibleInput();
-    }
 
     // Listen for keyboard input
     this.input.keyboard.on('keydown', this.handleWordInput, this);
@@ -260,6 +262,19 @@ class MainScene extends Phaser.Scene {
     }
   }    
 }
+
+Phaser.GameObjects.GameObjectFactory.register('wavyWord', function (x, y, font, text, fontSize = 32, options = {}) {
+  return new WavyWord(this.scene, x, y, font, text, fontSize, options);
+});
+
+// Patch MainScene's update to call all wavy updaters
+const origUpdate = MainScene.prototype.update;
+MainScene.prototype.update = function (time, delta) {
+  if (this._wavyWordUpdaters) {
+    for (const fn of this._wavyWordUpdaters) fn(time);
+  }
+  if (origUpdate) origUpdate.call(this, time, delta);
+};
 
 const config = {
   type: Phaser.AUTO,
