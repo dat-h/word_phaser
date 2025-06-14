@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { LetterCharacter, Word, WordNode } from './logic.js';
 
 class MainScene extends Phaser.Scene {
   constructor() {
@@ -86,17 +87,36 @@ class MainScene extends Phaser.Scene {
     this.enteredWord = '';
     this.letterSlots = [];
     const slotSpacing = 40;
+    const slotsY = this.cameras.main.height / 2;
     const startX = this.cameras.main.width / 2 - (slotSpacing * 2);
     for (let i = 0; i < 5; i++) {
       const slot = this.add.bitmapText(
         startX + i * slotSpacing,
-        this.cameras.main.height / 2,
+        slotsY,
         font,
         '_',
         fontSize
       ).setOrigin(0.5);
       this.letterSlots.push(slot);
     }
+
+    // Add invisible clickable box overlay over the letter slots
+    const overlayWidth = slotSpacing * 5;
+    const overlayHeight = fontSize + 16;
+    this.letterSlotOverlay = this.add.rectangle(
+      this.cameras.main.width / 2,
+      slotsY,
+      overlayWidth,
+      overlayHeight,
+      0x000000,
+      0 // fully transparent
+    ).setInteractive({ useHandCursor: true });
+    this.letterSlotOverlay.on('pointerdown', () => {
+      if (window.focusInvisibleInput) {
+        window.focusInvisibleInput();
+      }
+    });
+    this.letterSlotOverlay.setDepth(10); // ensure it's above the stars but below text
 
     // Example dictionary of valid words
     this.dictionary = ['apple', 'grape', 'peach', 'melon', 'lemon', 'berry', 'mango', 'plums', 'chess', 'words'];
@@ -117,10 +137,44 @@ class MainScene extends Phaser.Scene {
       font,
       this.upcomingWord,
       fontSize
-    ).setOrigin(0.5, 0);
+    ).setOrigin(0.5, 0); 
+    // Focus invisible input for keyboard capture
+    if (window.focusInvisibleInput) {
+      window.focusInvisibleInput();
+    }
 
     // Listen for keyboard input
     this.input.keyboard.on('keydown', this.handleWordInput, this);
+
+  }
+
+  // When leaving EnterWordScreen (e.g., after valid/invalid entry or moving to next screen)
+  showWavyWordScreen(word) {
+    // Hide enter word UI
+    if (this.enterWordTitle) this.enterWordTitle.setVisible(false);
+    if (this.letterSlots) this.letterSlots.forEach(l => l.setVisible(false));
+
+    // Display the entered word in a wavy pattern in the center
+    this.wavyLetters = [];
+    const font = 'nokia16';
+    const fontSize = 32;
+    const startX = this.cameras.main.width / 2 - (word.length * fontSize) / 2 + fontSize / 2;
+    for (let i = 0; i < word.length; i++) {
+      const letter = this.add.bitmapText(
+        startX + i * fontSize,
+        this.cameras.main.height / 2,
+        font,
+        word[i],
+        fontSize
+      ).setOrigin(0.5);
+      this.wavyLetters.push(letter);
+    }
+    this.wavyWordActive = true;
+
+    // Blur invisible input
+    if (window.blurInvisibleInput) {
+      window.blurInvisibleInput();
+    }
   }
 
   handleWordInput(event) {
@@ -179,29 +233,6 @@ class MainScene extends Phaser.Scene {
     });
   }
 
-  showWavyWordScreen(word) {
-    // Hide enter word UI
-    if (this.enterWordTitle) this.enterWordTitle.setVisible(false);
-    if (this.letterSlots) this.letterSlots.forEach(l => l.setVisible(false));
-
-    // Display the entered word in a wavy pattern in the center
-    this.wavyLetters = [];
-    const font = 'nokia16';
-    const fontSize = 32;
-    const startX = this.cameras.main.width / 2 - (word.length * fontSize) / 2 + fontSize / 2;
-    for (let i = 0; i < word.length; i++) {
-      const letter = this.add.bitmapText(
-        startX + i * fontSize,
-        this.cameras.main.height / 2,
-        font,
-        word[i],
-        fontSize
-      ).setOrigin(0.5);
-      this.wavyLetters.push(letter);
-    }
-    this.wavyWordActive = true;
-  }
-
   update(time) {
     // Animate starfield
     if (this.stars) {
@@ -227,59 +258,12 @@ class MainScene extends Phaser.Scene {
         letter.y = this.cameras.main.height / 2 + Math.sin(time / 200 + i * 0.5) * 10;
       }
     }
-  }
-}
-
-class LetterCharacter {
-  constructor(char, health = 100, attack = 10) {
-    this.char = char; // the letter character, e.g. 'a'
-    this.health = health;
-    this.attack = attack;
-  }
-}
-
-class WordNode {
-  constructor(letterCharacter) {
-    this.letterCharacter = letterCharacter;
-    this.next = null;
-  }
-}
-
-class Word {
-  constructor(wordString) {
-    this.head = null;
-    this.tail = null;
-    this.length = 0;
-    for (const char of wordString) {
-      this.append(new LetterCharacter(char));
-    }
-  }
-
-  append(letterCharacter) {
-    const node = new WordNode(letterCharacter);
-    if (!this.head) {
-      this.head = node;
-      this.tail = node;
-    } else {
-      this.tail.next = node;
-      this.tail = node;
-    }
-    this.length++;
-  }
-
-  // Optional: iterate through the linked list
-  *[Symbol.iterator]() {
-    let current = this.head;
-    while (current) {
-      yield current.letterCharacter;
-      current = current.next;
-    }
-  }
+  }    
 }
 
 const config = {
   type: Phaser.AUTO,
-  width: 800,
+  width: 320,
   height: 600,
   backgroundColor: '#222',
   parent: 'app',
