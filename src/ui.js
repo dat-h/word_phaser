@@ -42,6 +42,17 @@ class MainScene extends Phaser.Scene {
     this.startText.on('pointerdown', () => {
       this.startMainGame();
     });
+
+    const bottomY = this.cameras.main.height - 60;
+    this.versionText = this.add.bitmapText(
+      this.cameras.main.width / 2,
+      bottomY,
+      font,
+      'v 1.0 a1',
+      fontSize - 10
+    ).setOrigin(0.5, 0);
+
+
   }
 
   createStarfield() {
@@ -203,30 +214,27 @@ class MainScene extends Phaser.Scene {
     const defenderLetter = defenderWavy.letters[defenderIdx];
     const start = attackerLetter.getWorldTransformMatrix().transformPoint(0, 0);
     const end = defenderLetter.getWorldTransformMatrix().transformPoint(0, 0);
-    // Laser
-    const laser = this.add.graphics();
-    laser.lineStyle(3, 0xff0000, 1);
-    laser.beginPath();
-    laser.moveTo(start.x, start.y);
-    laser.lineTo(end.x, end.y);
-    laser.strokePath();
-    // Damage text
-    const dmgText = this.add.text(end.x, end.y - 30, `-${attacker.attack}`, { font: '20px Arial', fill: '#ff3333', fontStyle: 'bold' }).setOrigin(0.5);
+    // Particle (projectile) instead of laser
+    const particle = this.add.circle(start.x, start.y, 6, 0xff0000, 1);
     this.tweens.add({
-      targets: dmgText,
-      y: end.y - 50,
-      alpha: 0,
-      duration: 500,
-      onComplete: () => dmgText.destroy()
-    });
-    // Laser fade
-    this.tweens.add({
-      targets: laser,
-      alpha: 0,
+      targets: particle,
+      x: end.x,
+      y: end.y,
       duration: 300,
-      onComplete: () => laser.destroy()
+      onComplete: () => {
+        particle.destroy();
+        // Damage text
+        const dmgText = this.add.text(end.x, end.y - 30, `-${attacker.attack}`, { font: '20px Arial', fill: '#ff3333', fontStyle: 'bold' }).setOrigin(0.5);
+        this.tweens.add({
+          targets: dmgText,
+          y: end.y - 50,
+          alpha: 0,
+          duration: 500,
+          onComplete: () => dmgText.destroy()
+        });
+        this.time.delayedCall(200, onComplete);
+      }
     });
-    this.time.delayedCall(400, onComplete);
   }
 
   animateLetterDestroyed(letter, side) {
