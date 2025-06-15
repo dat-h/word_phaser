@@ -10,6 +10,13 @@ class MainScene extends Phaser.Scene {
   preload() {
     // Load the bitmap font (using a placeholder PNG, user should replace with their own)
     this.load.bitmapFont('nokia16', 'nokia16.png', 'nokia16.xml');
+
+    // Load sound effects
+    this.load.audio('attack', 'assets/sfx/attack.mp3');
+    this.load.audio('damage', 'assets/sfx/damage.mp3');
+    this.load.audio('explode', 'assets/sfx/explode.mp3');
+    // Load background music
+    this.load.audio('bgm', 'assets/music/bg.mp3');
   }
 
   create() {
@@ -69,6 +76,11 @@ class MainScene extends Phaser.Scene {
   }
 
   startMainGame() {
+    // Play background music if not already playing
+    if (!this.bgm) {
+      this.bgm = this.sound.add('bgm', { loop: true, volume: 0.5 });
+      this.bgm.play();
+    }
     // Hide start and welcome text
     if (this.startText) this.startText.setVisible(false);
     if (this.gameTitle) this.gameTitle.setVisible(false);
@@ -210,6 +222,8 @@ class MainScene extends Phaser.Scene {
     const defenderLetter = defenderBW.letters[defenderIdx];
     const start = attackerLetter.getWorldTransformMatrix().transformPoint(0, 0);
     const end = defenderLetter.getWorldTransformMatrix().transformPoint(0, 0);
+    // Play attack sound
+    this.sound.play('attack', { volume: 0.5 });
     // Particle (projectile) instead of laser
     const particle = this.add.circle(start.x, start.y, 6, 0xff0000, 1);
     this.tweens.add({
@@ -219,6 +233,8 @@ class MainScene extends Phaser.Scene {
       duration: 300,
       onComplete: () => {
         particle.destroy();
+        // Play damage sound
+        // this.sound.play('damage', { volume: 0.5 });
         defenderLetter.showDamage(attacker.attack);
         this.time.delayedCall(200, onComplete);
       }
@@ -231,6 +247,7 @@ class MainScene extends Phaser.Scene {
     const idx = bw.letters.indexOf(letter);
     if (idx === -1) return;
     const target = bw.letters[idx];
+    this.sound.play('explode', { volume: 0.8 });
     target.explode();
     // Remove letter from BattleWord (already handled by engine, so just visual)
   }
