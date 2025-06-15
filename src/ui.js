@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { LetterCharacter, Word, WordNode } from './logic.js';
+import { LetterCharacter, Word, WordNode, BattleEngine } from './logic.js';
 import { WavyWord } from './wavyWord.js';
 
 class MainScene extends Phaser.Scene {
@@ -36,7 +36,7 @@ class MainScene extends Phaser.Scene {
       this.cameras.main.height / 2 + 100,
       font,
       'start',
-      fontSize
+      fontSize + 10
     ).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     this.startText.on('pointerdown', () => {
@@ -87,9 +87,12 @@ class MainScene extends Phaser.Scene {
       'upcoming word:',
       fontSize
     ).setOrigin(0.5, 0);
+
     this.upcomingWord = Phaser.Utils.Array.GetRandom(this.dictionary);
-    this.upcomingWordText = this.add.bitmapText(
-      this.cameras.main.width / 2,
+    this.enemyWord = new Word(this.upcomingWord);
+    const upcomingStartX = this.cameras.main.width / 2 - (this.upcomingWord.length * fontSize) / 2 + fontSize / 2;
+    this.upcomingWordText = this.add.wavyWord(
+      upcomingStartX,
       topY + 36,
       font,
       this.upcomingWord,
@@ -151,32 +154,143 @@ class MainScene extends Phaser.Scene {
   }
 
   // When leaving EnterWordScreen (e.g., after valid/invalid entry or moving to next screen)
-  showWavyWordScreen(word) {
+  showWavyWordScreen() {
     // Hide enter word UI
     if (this.enterWordTitle) this.enterWordTitle.setVisible(false);
+    if (this.upcomingWordLabel) this.upcomingWordLabel.setVisible(false);
     if (this.letterSlots) this.letterSlots.forEach(l => l.setVisible(false));
+    if (this.letterSlotOverlay) this.letterSlotOverlay.setVisible(false);
+    if (this.upcomingWordText) this.upcomingWordText.setVisible(false);
 
-    // Display the entered word in a wavy pattern in the center
-    this.wavyLetters = [];
+    // Display the entered word and enemy word as wavywords
     const font = 'nokia16';
     const fontSize = 32;
-    const startX = this.cameras.main.width / 2 - (word.length * fontSize) / 2 + fontSize / 2;
-    for (let i = 0; i < word.length; i++) {
-      const letter = this.add.bitmapText(
-        startX + i * fontSize,
-        this.cameras.main.height / 2,
-        font,
-        word[i],
-        fontSize
-      ).setOrigin(0.5);
-      this.wavyLetters.push(letter);
-    }
-    this.wavyWordActive = true;
+    const centerX = this.cameras.main.width / 2 - (5 * fontSize) / 2 + fontSize / 2;;
+
+    const playerY = this.cameras.main.height / 2 + 80;
+    const enemyY = this.cameras.main.height / 2 - 80;
+    this.playerWavyWord = this.add.wavyWord(centerX, playerY, font, this.battleWord, fontSize).setOrigin(0.5);
+    this.enemyWavyWord = this.add.wavyWord(centerX, enemyY, font, this.enemyWord, fontSize).setOrigin(0.5);
+
+    // Start the battle
+    this.startBattle(this.playerWavyWord.word, this.enemyWavyWord.word);
 
     // Blur invisible input
     if (window.blurInvisibleInput) {
       window.blurInvisibleInput();
     }
+  }
+
+  startBattle(battleWord, enemyWord) {
+    // const { BattleEngine } = require('./logic.js');
+    this.battleEngine = new BattleEngine(battleWord, enemyWord, {
+      onLetterDestroyed: (letter, side) => this.animateLetterDestroyed(letter, side),
+      onWordWin: (side) => this.showBattleResult(side)
+    });
+    this.battleInProgress = true;
+    this.battleStep();
+  }
+
+  battleStep() {
+    if (!this.battleInProgress) return;
+    const engine = this.battleEngine;
+    // Get attacker and defender info
+    let attackerWord, defenderWord, attackerWavy, defenderWavy;
+    if (engine.turn === 'battle') {
+      attackerWavy = this.playerWavyWord;
+      defenderWavy = this.enemyWavyWord;
+    } else {
+      attackerWavy = this.enemyWavyWord;
+      defenderWavy = this.playerWavyWord;
+    }
+    // Animate laser and damage
+    this.animateAttack(attackerWavy, defenderWavy, () => {
+      engine.step();
+      if (this.battleInProgress) {
+        this.time.delayedCall(700, () => this.battleStep());
+      }
+    });
+  }
+
+  animateAttack(attackerWavy, defenderWavy, onComplete) {
+    const attackerLetter = attackerWavy.word.head.letterCharacter;
+    const defenderLetter = defenderWavy.word.head.letterCharacter;
+    const attackerBitmapLetter = attackerWavy.letters[0];
+    const defenderBitmapLetter = defenderWavy.letters[0];
+
+    const start = attackerBitmapLetter.getWorldTransformMatrix().transformPoint(0, 0);
+    const end = defenderBitmapLetter.getWorldTransformMatrix().transformPoint(0, 0);
+    // Laser
+    const laser = this.add.graphics();
+    laser.lineStyle(3, 0xff0000, 1);
+    laser.beginPath();
+    laser.moveTo(start.x, start.y);
+    laser.lineTo(end.x, end.y);
+    laser.strokePath();
+
+    // Get the correct attack value from the attacker
+    let attackValue = 5;
+    if (attackerLetter) {
+      attackValue = attackerLetter.attack;
+    }
+    // Damage text
+    const dmgText = this.add.text(end.x, end.y - 30, `-${attackValue}`, { font: '20px Arial', fill: '#ff3333', fontStyle: 'bold' }).setOrigin(0.5);
+    this.tweens.add({
+      targets: dmgText,
+      y: end.y - 50,
+      alpha: 0,
+      duration: 500,
+      onComplete: () => dmgText.destroy()
+    });
+    // Laser fade
+    this.tweens.add({
+      targets: laser,
+      alpha: 0,
+      duration: 300,
+      onComplete: () => laser.destroy()
+    });
+    this.time.delayedCall(400, onComplete);
+  }
+
+  animateLetterDestroyed(letter, side) {
+    // Find the wavyword and letter index
+    const wavy = side === 'battle' ? this.playerWavyWord : this.enemyWavyWord;
+    const idx = wavy.letters.findIndex(l => l.text === letter.char);
+    if (idx === -1) return;
+    const target = wavy.letters[idx];
+    // Explosion
+    const explosion = this.add.graphics();
+    const pos = target.getWorldTransformMatrix().transformPoint(0, 0);
+    explosion.fillStyle(0xffff00, 1);
+    explosion.fillCircle(pos.x, pos.y, 10);
+    this.tweens.add({
+      targets: explosion,
+      alpha: 0,
+      scale: 2,
+      duration: 400,
+      onComplete: () => explosion.destroy()
+    });
+    // Remove letter from wavyword
+    target.destroy();
+    wavy.letters.splice(idx, 1);
+    // // Reposition remaining letters
+    // for (let i = 0; i < wavy.letters.length; i++) {
+    //   this.tweens.add({
+    //     targets: wavy.letters[i],
+    //     x: (i - (wavy.letters.length - 1) / 2) * wavy.spacing,
+    //     duration: 200
+    //   });
+    // }
+  }
+
+  showBattleResult(side) {
+    this.battleInProgress = false;
+    this.add.text(
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2,
+      side === 'battle' ? 'You Win!' : 'Enemy Wins!',
+      { font: '32px Arial', fill: '#fff' }
+    ).setOrigin(0.5);
   }
 
   handleWordInput(event) {
@@ -200,7 +314,8 @@ class MainScene extends Phaser.Scene {
   checkWordAndProceed() {
     if (this.dictionary.includes(this.enteredWord)) {
       this.input.keyboard.off('keydown', this.handleWordInput, this);
-      this.showWavyWordScreen(this.enteredWord);
+      this.battleWord = new Word(this.enteredWord);
+      this.showWavyWordScreen();
     } else {
       // Flash red overlay for invalid entry
       this.flashRedOverlay();

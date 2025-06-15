@@ -1,12 +1,15 @@
 import Phaser from 'phaser';
+import { LetterCharacter, Word, WordNode, BattleEngine } from './logic.js';
+
 
 export class WavyWord extends Phaser.GameObjects.Container {
-  constructor(scene, x, y, font, text, fontSize = 32, options = {}) {
+  constructor(scene, x, y, font, word, fontSize = 32, options = {}) {
     super(scene, x, y);
     scene.add.existing(this);
     this.letters = [];
     this.font = font;
-    this.text = text;
+    this.word = word;
+    this.text = word.toString();
     this.fontSize = fontSize;
     this.spacing = options.spacing || fontSize;
     this.amplitude = options.amplitude || 10;
