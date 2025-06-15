@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { LetterCharacter, Word, WordNode, BattleEngine } from './logic.js';
+import { BattleEngine } from './logic.js';
 import { BattleWord } from './battleWord.js';
 
 class MainScene extends Phaser.Scene {
@@ -47,7 +47,7 @@ class MainScene extends Phaser.Scene {
       this.cameras.main.width / 2,
       bottomY,
       font,
-      'v 1.0 a2',
+      'v 1.0 a3',
       fontSize - 10
     ).setOrigin(0.5, 0);
   }
@@ -97,7 +97,7 @@ class MainScene extends Phaser.Scene {
     ).setOrigin(0.5, 0);
 
     this.upcomingWord = Phaser.Utils.Array.GetRandom(this.dictionary);
-    this.enemyWord = new Word(this.upcomingWord);
+    this.enemyWord = this.upcomingWord;
     const upcomingStartX = this.cameras.main.width / 2;
     this.upcomingWordText = this.add.battleWord(
       upcomingStartX,
@@ -263,15 +263,27 @@ class MainScene extends Phaser.Scene {
     }
   }
 
-  checkWordAndProceed() {
-    if (this.dictionary.includes(this.enteredWord)) {
+  async checkWordAndProceed() {
+    // Use dictionaryapi.dev to check for valid 5-letter English words
+    if (this.enteredWord.length !== 5) return;
+    const word = this.enteredWord.toLowerCase();
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+      const data = await res.json();
+      if (data.title === 'No Definitions Found') {
+        this.flashRedOverlay();
+        this.enteredWord = '';
+        for (let i = 0; i < this.letterSlots.length; i++) {
+          this.letterSlots[i].setText('_');
+        }
+        return;
+      }
       this.input.keyboard.off('keydown', this.handleWordInput, this);
-      this.battleWord = new Word(this.enteredWord);
+      this.battleWord = this.enteredWord;
       this.showWavyWordScreen();
-    } else {
-      // Flash red overlay for invalid entry
+    } catch (e) {
+      // On error, treat as invalid
       this.flashRedOverlay();
-      // Clear input for new entry
       this.enteredWord = '';
       for (let i = 0; i < this.letterSlots.length; i++) {
         this.letterSlots[i].setText('_');
