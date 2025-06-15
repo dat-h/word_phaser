@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { LetterCharacter, Word, WordNode, BattleEngine } from './logic.js';
-import { WavyWord } from './wavyWord.js';
+import { BattleWord } from './battleWord.js';
 
 class MainScene extends Phaser.Scene {
   constructor() {
@@ -16,13 +16,12 @@ class MainScene extends Phaser.Scene {
     // Starfield background
     this.createStarfield();
 
-    // Display 'welcome' at the top center as individual letters for animation
+    // Display 'welcome' at the top center as BattleWord
     const welcomeText = 'war game';
     const font = 'nokia16';
     const fontSize = 32;
-    const startX = this.cameras.main.width / 2 - (welcomeText.length * fontSize) / 2 + fontSize / 2;
-
-    this.gameTitle = this.add.wavyWord(
+    const startX = this.cameras.main.width / 2;
+    this.gameTitle = this.add.battleWord(
       startX,
       30,
       font,
@@ -48,11 +47,9 @@ class MainScene extends Phaser.Scene {
       this.cameras.main.width / 2,
       bottomY,
       font,
-      'v 1.0 a1',
+      'v 1.0 a2',
       fontSize - 10
     ).setOrigin(0.5, 0);
-
-
   }
 
   createStarfield() {
@@ -101,8 +98,8 @@ class MainScene extends Phaser.Scene {
 
     this.upcomingWord = Phaser.Utils.Array.GetRandom(this.dictionary);
     this.enemyWord = new Word(this.upcomingWord);
-    const upcomingStartX = this.cameras.main.width / 2 - (this.upcomingWord.length * fontSize) / 2 + fontSize / 2;
-    this.upcomingWordText = this.add.wavyWord(
+    const upcomingStartX = this.cameras.main.width / 2;
+    this.upcomingWordText = this.add.battleWord(
       upcomingStartX,
       topY + 36,
       font,
@@ -173,18 +170,17 @@ class MainScene extends Phaser.Scene {
     if (this.letterSlotOverlay) this.letterSlotOverlay.setVisible(false);
     if (this.upcomingWordText) this.upcomingWordText.setVisible(false);
 
-    // Display the entered word and enemy word as wavywords
+    // Display the entered word and enemy word as BattleWords
     const font = 'nokia16';
     const fontSize = 32;
-    const centerX = this.cameras.main.width / 2 - (5 * fontSize) / 2 + fontSize / 2;;
-
+    const centerX = this.cameras.main.width / 2;
     const playerY = this.cameras.main.height / 2 + 80;
     const enemyY = this.cameras.main.height / 2 - 80;
-    this.playerWavyWord = this.add.wavyWord(centerX, playerY, font, this.battleWord, fontSize).setOrigin(0.5);
-    this.enemyWavyWord = this.add.wavyWord(centerX, enemyY, font, this.enemyWord, fontSize).setOrigin(0.5);
+    this.playerBattleWord = this.add.battleWord(centerX, playerY, font, this.battleWord.toString(), fontSize).setOrigin(0.5);
+    this.enemyBattleWord = this.add.battleWord(centerX, enemyY, font, this.enemyWord.toString(), fontSize).setOrigin(0.5);
 
     // Start the battle
-    this.startBattle(this.playerWavyWord.word, this.enemyWavyWord.word);
+    this.startBattle(this.playerBattleWord, this.enemyBattleWord);
 
     // Blur invisible input
     if (window.blurInvisibleInput) {
@@ -192,15 +188,15 @@ class MainScene extends Phaser.Scene {
     }
   }
 
-  startBattle(battleWord, enemyWord) {
-    this.battleEngine = new BattleEngine(battleWord, enemyWord, {
-      onAttack: (attacker, defender, turn, next) => {
-        // Find wavywords and letter indices
-        const attackerWavy = turn === 'battle' ? this.playerWavyWord : this.enemyWavyWord;
-        const defenderWavy = turn === 'battle' ? this.enemyWavyWord : this.playerWavyWord;
-        const attackerIdx = 0;
-        const defenderIdx = 0;
-        this.animateAttack(attackerWavy, defenderWavy, attackerIdx, defenderIdx, attacker, defender, next);
+  startBattle(playerBattleWord, enemyBattleWord) {
+    this.battleEngine = new BattleEngine(playerBattleWord, enemyBattleWord, {
+      onAttack: (attacker, defender, attackerWord, defenderWord, turn, next) => {
+        // Find BattleWords and letter indices
+        const attackerBW = attackerWord;
+        const defenderBW = defenderWord;
+        const attackerIdx = attackerBW.letters.indexOf(attacker);
+        const defenderIdx = defenderBW.letters.indexOf(defender);
+        this.animateAttack(attackerBW, defenderBW, attackerIdx, defenderIdx, attacker, defender, next);
       },
       onLetterDestroyed: (letter, side) => this.animateLetterDestroyed(letter, side),
       onWordWin: (side) => this.showBattleResult(side),
@@ -209,9 +205,9 @@ class MainScene extends Phaser.Scene {
     this.battleEngine.start();
   }
 
-  animateAttack(attackerWavy, defenderWavy, attackerIdx, defenderIdx, attacker, defender, onComplete) {
-    const attackerLetter = attackerWavy.letters[attackerIdx];
-    const defenderLetter = defenderWavy.letters[defenderIdx];
+  animateAttack(attackerBW, defenderBW, attackerIdx, defenderIdx, attacker, defender, onComplete) {
+    const attackerLetter = attackerBW.letters[attackerIdx];
+    const defenderLetter = defenderBW.letters[defenderIdx];
     const start = attackerLetter.getWorldTransformMatrix().transformPoint(0, 0);
     const end = defenderLetter.getWorldTransformMatrix().transformPoint(0, 0);
     // Particle (projectile) instead of laser
@@ -223,49 +219,20 @@ class MainScene extends Phaser.Scene {
       duration: 300,
       onComplete: () => {
         particle.destroy();
-        // Damage text
-        const dmgText = this.add.text(end.x, end.y - 30, `-${attacker.attack}`, { font: '20px Arial', fill: '#ff3333', fontStyle: 'bold' }).setOrigin(0.5);
-        this.tweens.add({
-          targets: dmgText,
-          y: end.y - 50,
-          alpha: 0,
-          duration: 500,
-          onComplete: () => dmgText.destroy()
-        });
+        defenderLetter.showDamage(attacker.attack);
         this.time.delayedCall(200, onComplete);
       }
     });
   }
 
   animateLetterDestroyed(letter, side) {
-    // Find the wavyword and letter index
-    const wavy = side === 'battle' ? this.playerWavyWord : this.enemyWavyWord;
-    const idx = wavy.letters.findIndex(l => l.text === letter.char);
+    // Find the BattleWord and letter index
+    const bw = side === 'player' ? this.playerBattleWord : this.enemyBattleWord;
+    const idx = bw.letters.indexOf(letter);
     if (idx === -1) return;
-    const target = wavy.letters[idx];
-    // Explosion
-    const explosion = this.add.graphics();
-    const pos = target.getWorldTransformMatrix().transformPoint(0, 0);
-    explosion.fillStyle(0xffff00, 1);
-    explosion.fillCircle(pos.x, pos.y, 10);
-    this.tweens.add({
-      targets: explosion,
-      alpha: 0,
-      scale: 2,
-      duration: 400,
-      onComplete: () => explosion.destroy()
-    });
-    // Remove letter from wavyword
-    target.destroy();
-    wavy.letters.splice(idx, 1);
-    // // Reposition remaining letters
-    // for (let i = 0; i < wavy.letters.length; i++) {
-    //   this.tweens.add({
-    //     targets: wavy.letters[i],
-    //     x: (i - (wavy.letters.length - 1) / 2) * wavy.spacing,
-    //     duration: 200
-    //   });
-    // }
+    const target = bw.letters[idx];
+    target.explode();
+    // Remove letter from BattleWord (already handled by engine, so just visual)
   }
 
   showBattleResult(side) {
@@ -273,7 +240,7 @@ class MainScene extends Phaser.Scene {
     this.add.text(
       this.cameras.main.width / 2,
       this.cameras.main.height / 2,
-      side === 'battle' ? 'You Win!' : 'Enemy Wins!',
+      side === 'player' ? 'You Win!' : 'Enemy Wins!',
       { font: '32px Arial', fill: '#fff' }
     ).setOrigin(0.5);
   }
@@ -363,15 +330,18 @@ class MainScene extends Phaser.Scene {
   }    
 }
 
-Phaser.GameObjects.GameObjectFactory.register('wavyWord', function (x, y, font, text, fontSize = 32, options = {}) {
-  return new WavyWord(this.scene, x, y, font, text, fontSize, options);
+Phaser.GameObjects.GameObjectFactory.register('battleWord', function (x, y, font, text, fontSize = 32, options = {}) {
+  return new BattleWord(this.scene, x, y, font, text, fontSize, options);
 });
 
-// Patch MainScene's update to call all wavy updaters
+// Patch MainScene's update to call all wavy updaters and battleword updaters
 const origUpdate = MainScene.prototype.update;
 MainScene.prototype.update = function (time, delta) {
   if (this._wavyWordUpdaters) {
     for (const fn of this._wavyWordUpdaters) fn(time);
+  }
+  if (this._battleWordUpdaters) {
+    for (const fn of this._battleWordUpdaters) fn(time);
   }
   if (origUpdate) origUpdate.call(this, time, delta);
 };
