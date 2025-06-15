@@ -182,44 +182,27 @@ class MainScene extends Phaser.Scene {
   }
 
   startBattle(battleWord, enemyWord) {
-    // const { BattleEngine } = require('./logic.js');
     this.battleEngine = new BattleEngine(battleWord, enemyWord, {
+      onAttack: (attacker, defender, turn, next) => {
+        // Find wavywords and letter indices
+        const attackerWavy = turn === 'battle' ? this.playerWavyWord : this.enemyWavyWord;
+        const defenderWavy = turn === 'battle' ? this.enemyWavyWord : this.playerWavyWord;
+        const attackerIdx = 0;
+        const defenderIdx = 0;
+        this.animateAttack(attackerWavy, defenderWavy, attackerIdx, defenderIdx, attacker, defender, next);
+      },
       onLetterDestroyed: (letter, side) => this.animateLetterDestroyed(letter, side),
-      onWordWin: (side) => this.showBattleResult(side)
+      onWordWin: (side) => this.showBattleResult(side),
+      delayFn: (fn, ms) => this.time.delayedCall(ms, fn)
     });
-    this.battleInProgress = true;
-    this.battleStep();
+    this.battleEngine.start();
   }
 
-  battleStep() {
-    if (!this.battleInProgress) return;
-    const engine = this.battleEngine;
-    // Get attacker and defender info
-    let attackerWord, defenderWord, attackerWavy, defenderWavy;
-    if (engine.turn === 'battle') {
-      attackerWavy = this.playerWavyWord;
-      defenderWavy = this.enemyWavyWord;
-    } else {
-      attackerWavy = this.enemyWavyWord;
-      defenderWavy = this.playerWavyWord;
-    }
-    // Animate laser and damage
-    this.animateAttack(attackerWavy, defenderWavy, () => {
-      engine.step();
-      if (this.battleInProgress) {
-        this.time.delayedCall(700, () => this.battleStep());
-      }
-    });
-  }
-
-  animateAttack(attackerWavy, defenderWavy, onComplete) {
-    const attackerLetter = attackerWavy.word.head.letterCharacter;
-    const defenderLetter = defenderWavy.word.head.letterCharacter;
-    const attackerBitmapLetter = attackerWavy.letters[0];
-    const defenderBitmapLetter = defenderWavy.letters[0];
-
-    const start = attackerBitmapLetter.getWorldTransformMatrix().transformPoint(0, 0);
-    const end = defenderBitmapLetter.getWorldTransformMatrix().transformPoint(0, 0);
+  animateAttack(attackerWavy, defenderWavy, attackerIdx, defenderIdx, attacker, defender, onComplete) {
+    const attackerLetter = attackerWavy.letters[attackerIdx];
+    const defenderLetter = defenderWavy.letters[defenderIdx];
+    const start = attackerLetter.getWorldTransformMatrix().transformPoint(0, 0);
+    const end = defenderLetter.getWorldTransformMatrix().transformPoint(0, 0);
     // Laser
     const laser = this.add.graphics();
     laser.lineStyle(3, 0xff0000, 1);
@@ -227,14 +210,8 @@ class MainScene extends Phaser.Scene {
     laser.moveTo(start.x, start.y);
     laser.lineTo(end.x, end.y);
     laser.strokePath();
-
-    // Get the correct attack value from the attacker
-    let attackValue = 5;
-    if (attackerLetter) {
-      attackValue = attackerLetter.attack;
-    }
     // Damage text
-    const dmgText = this.add.text(end.x, end.y - 30, `-${attackValue}`, { font: '20px Arial', fill: '#ff3333', fontStyle: 'bold' }).setOrigin(0.5);
+    const dmgText = this.add.text(end.x, end.y - 30, `-${attacker.attack}`, { font: '20px Arial', fill: '#ff3333', fontStyle: 'bold' }).setOrigin(0.5);
     this.tweens.add({
       targets: dmgText,
       y: end.y - 50,

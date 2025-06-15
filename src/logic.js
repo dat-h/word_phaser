@@ -61,15 +61,31 @@ function isVowel(char) {
 }
 
 export class BattleEngine {
-  constructor(battleWord, enemyWord, { onLetterDestroyed, onWordWin } = {}) {
+  constructor(battleWord, enemyWord, {
+    onAttack, onLetterDestroyed, onWordWin, delayFn, delayMs = 700
+  } = {}) {
     this.battleWord = battleWord;
     this.enemyWord = enemyWord;
+    this.onAttack = onAttack;
     this.onLetterDestroyed = onLetterDestroyed;
     this.onWordWin = onWordWin;
+    this.delayFn = delayFn; // (fn, ms) => void
+    this.delayMs = delayMs;
     this.turn = 'battle'; // 'battle' or 'enemy'
+    this._running = false;
   }
 
-  step() {
+  start() {
+    this._running = true;
+    this._stepLoop();
+  }
+
+  stop() {
+    this._running = false;
+  }
+
+  _stepLoop() {
+    if (!this._running) return;
     // Get first living letter from each word
     let battleNode = this.battleWord.head;
     let enemyNode = this.enemyWord.head;
@@ -88,19 +104,45 @@ export class BattleEngine {
     }
     attacker = attackerNode.letterCharacter;
     defender = defenderNode.letterCharacter;
-    defender.health -= attacker.attack;
-    if (defender.health <= 0) {
-      // Remove destroyed letter from word
-      this.removeFirstLetter(defenderWord);
-      if (this.onLetterDestroyed) this.onLetterDestroyed(defender, defenderWord === this.battleWord ? 'battle' : 'enemy');
-      // Check for win
-      if (!defenderWord.head) {
-        if (this.onWordWin) this.onWordWin(attackerWord === this.battleWord ? 'battle' : 'enemy');
-        return;
+    // UI callback for attack
+    if (this.onAttack) {
+      this.onAttack(attacker, defender, this.turn, () => {
+        // After animation, apply damage and continue
+        defender.health -= attacker.attack;
+        let destroyed = false;
+        if (defender.health <= 0) {
+          this.removeFirstLetter(defenderWord);
+          destroyed = true;
+          if (this.onLetterDestroyed) this.onLetterDestroyed(defender, defenderWord === this.battleWord ? 'battle' : 'enemy');
+          if (!defenderWord.head) {
+            if (this.onWordWin) this.onWordWin(attackerWord === this.battleWord ? 'battle' : 'enemy');
+            this._running = false;
+            return;
+          }
+        }
+        // Next turn
+        this.turn = this.turn === 'battle' ? 'enemy' : 'battle';
+        if (this._running && this.delayFn) {
+          this.delayFn(() => this._stepLoop(), this.delayMs);
+        }
+      });
+    } else {
+      // No animation, just run logic
+      defender.health -= attacker.attack;
+      if (defender.health <= 0) {
+        this.removeFirstLetter(defenderWord);
+        if (this.onLetterDestroyed) this.onLetterDestroyed(defender, defenderWord === this.battleWord ? 'battle' : 'enemy');
+        if (!defenderWord.head) {
+          if (this.onWordWin) this.onWordWin(attackerWord === this.battleWord ? 'battle' : 'enemy');
+          this._running = false;
+          return;
+        }
+      }
+      this.turn = this.turn === 'battle' ? 'enemy' : 'battle';
+      if (this._running && this.delayFn) {
+        this.delayFn(() => this._stepLoop(), this.delayMs);
       }
     }
-    // Next turn
-    this.turn = this.turn === 'battle' ? 'enemy' : 'battle';
   }
 
   removeFirstLetter(word) {
