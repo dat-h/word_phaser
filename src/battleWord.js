@@ -61,6 +61,13 @@ export class BattleLetter extends Phaser.GameObjects.Container {
     return this;
   }
 
+  healDamage(amount) {
+    this.health += amount;
+    this.showHealing(amount);
+    this._showHealthBarBriefly();
+    this.updateHealthBar();
+  }
+
   takeDamage(amount) {
     this.health -= amount;
     this.showDamage(amount);
@@ -83,6 +90,20 @@ export class BattleLetter extends Phaser.GameObjects.Container {
       this.updateHealthBar();
     });
   }
+
+
+  showHealing(amount) {
+    // Use world coordinates for the damage text
+    const pos = this.getWorldTransformMatrix().transformPoint(0, 0);
+    const dmgText = this.scene.add.text(pos.x, pos.y - 30, `+${amount}`, { font: '20px Arial', fill: '#33ff33', fontStyle: 'bold' }).setOrigin(0.5);
+    this.scene.tweens.add({
+      targets: dmgText,
+      y: pos.y - 50,
+      alpha: 0,
+      duration: 500,
+      onComplete: () => dmgText.destroy()
+    });
+  }  
 
   showDamage(amount) {
     // Use world coordinates for the damage text

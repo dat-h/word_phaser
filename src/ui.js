@@ -79,7 +79,7 @@ class MainScene extends Phaser.Scene {
     this.clearScreen()
 
     // display some debugging text
-    this.winText = this.add.text(
+    this.debugText = this.add.text(
       this.cameras.main.width / 2,
       this.cameras.main.height - 20,
       'debugging text',
@@ -123,7 +123,7 @@ class MainScene extends Phaser.Scene {
 
   showEnterWordScreen() {
     this.clearScreen()
-
+    this.debugText.setText( "enter word");
     // Example dictionary of valid words
     this.dictionary = ['apple', 'grape', 'peach', 'melon', 'lemon', 'berry', 'mango', 'plums', 'chess', 'words'];
 
@@ -225,15 +225,59 @@ class MainScene extends Phaser.Scene {
   }
 
   startBattle(playerBattleWord, enemyBattleWord) {
-    this.battleEngine = new BattleEngine(playerBattleWord, enemyBattleWord, {
+    this.battleEngine = new BattleEngine(playerBattleWord, enemyBattleWord, this.debugText, {
       onAttack: (attacker, defender, next) => {
         this.animateAttack( attacker, defender, next);
       },
+      onBuff: (caster, target, next) => {
+        this.animateBuff( caster, target, next);
+      },      
       onWordWin: (isPlayerSide) => this.showBattleResult(isPlayerSide),
       delayFn: (fn, ms) => this.time.delayedCall(ms, fn)
     });
     this.battleEngine.start();
   }
+animateBuff(caster, target, onComplete) {
+    const start = caster.getWorldTransformMatrix().transformPoint(0, 0);
+    const end = target.getWorldTransformMatrix().transformPoint(0, 0);
+
+    // Create a glowing blue particle (circle) that travels from caster to target
+    const particle = this.add.circle(start.x, start.y, 8, 0x00bfff, 0.8);
+    particle.setStrokeStyle(2, 0xffffff, 0.7);
+
+    // Tween the particle to the target
+    this.tweens.add({
+        targets: particle,
+        x: end.x,
+        y: end.y,
+        scale: { from: 1, to: 1.3 },
+        alpha: { from: 0.8, to: 1 },
+        duration: 350,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+            particle.destroy();
+
+            // Glowing blue light effect on the target
+            const glow = this.add.circle(end.x, end.y, 22, 0x00bfff, 0.5)
+                .setDepth(50)
+                .setAlpha(0.7);
+            glow.setBlendMode(Phaser.BlendModes.ADD);
+
+            this.tweens.add({
+                targets: glow,
+                scale: { from: 1, to: 1.7 },
+                alpha: { from: 0.7, to: 0 },
+                duration: 400,
+                ease: 'Sine.easeOut',
+                onComplete: () => {
+                    glow.destroy();
+                    this.time.delayedCall(150, onComplete);
+                }
+            });
+        }
+    });
+}
+
 
   animateAttack( attackerLetter, defenderLetter, onComplete) {
     const start = attackerLetter.getWorldTransformMatrix().transformPoint(0, 0);
@@ -251,7 +295,7 @@ class MainScene extends Phaser.Scene {
         particle.destroy();
         // Play damage sound
         this.sound.play('damage', { volume: 0.5 });
-        defenderLetter.showDamage(attackerLetter.attack);
+        // defenderLetter.showDamage(attackerLetter.attack);
         this.time.delayedCall(200, onComplete);
       }
     });
