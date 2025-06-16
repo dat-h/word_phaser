@@ -6,16 +6,16 @@ function isVowel(char) {
 
 export class BattleEngine {
   constructor(playerBattleWord, enemyBattleWord, {
-    onAttack, onLetterDestroyed, onWordWin, delayFn, delayMs = 400
+    onAttack, onWordWin, delayFn, delayMs = 400
   } = {}) {
     this.playerBattleWord = playerBattleWord;
     this.enemyBattleWord = enemyBattleWord;
     this.onAttack = onAttack;
-    this.onLetterDestroyed = onLetterDestroyed;
     this.onWordWin = onWordWin;
     this.delayFn = delayFn;
     this.delayMs = delayMs;
-    this.turn = 'player'; // 'player' or 'enemy'
+    // this.turn = 'player'; // 'player' or 'enemy'
+    this.isPlayerTurn = true
     this._running = false;
   }
 
@@ -33,57 +33,43 @@ export class BattleEngine {
     let playerLetter = this.playerBattleWord.getFirstLivingLetter();
     let enemyLetter = this.enemyBattleWord.getFirstLivingLetter();
     if (!playerLetter || !enemyLetter) return;
-    let attacker, defender, attackerWord, defenderWord, attackerIdx, defenderIdx;
-    if (this.turn === 'player') {
+    let attacker, defender, attackerWord, defenderWord;
+    if ( this.isPlayerTurn ) {
       attackerWord = this.playerBattleWord;
       defenderWord = this.enemyBattleWord;
       attacker = playerLetter;
       defender = enemyLetter;
-      attackerIdx = attackerWord.letters.indexOf(attacker);
-      defenderIdx = defenderWord.letters.indexOf(defender);
     } else {
       attackerWord = this.enemyBattleWord;
       defenderWord = this.playerBattleWord;
       attacker = enemyLetter;
       defender = playerLetter;
-      attackerIdx = attackerWord.letters.indexOf(attacker);
-      defenderIdx = defenderWord.letters.indexOf(defender);
     }
     // UI callback for attack
     if (this.onAttack) {
-      this.onAttack(attacker, defender, attackerWord, defenderWord, this.turn, () => {
-        defender.takeDamage(attacker.attack);
-        if (defender.health <= 0) {
-          defenderWord.removeLetter(defenderIdx);
-          if (this.onLetterDestroyed) this.onLetterDestroyed(defender, defenderWord === this.playerBattleWord ? 'player' : 'enemy');
-          if (!defenderWord.getFirstLivingLetter()) {
-            if (this.onWordWin) this.onWordWin(attackerWord === this.playerBattleWord ? 'player' : 'enemy');
-            this._running = false;
-            return;
-          }
-        }
-        // Next turn
-        this.turn = this.turn === 'player' ? 'enemy' : 'player';
-        if (this._running && this.delayFn) {
-          this.delayFn(() => this._stepLoop(), this.delayMs);
-        }
+      this.onAttack(attacker, defender, () => {
+        this.handleAttack( attacker, defender, attackerWord, defenderWord );
       });
     } else {
       // No animation, just run logic
-      defender.takeDamage(attacker.attack);
-      if (defender.health <= 0) {
-        defenderWord.removeLetter(defenderIdx);
-        if (this.onLetterDestroyed) this.onLetterDestroyed(defender, defenderWord === this.playerBattleWord ? 'player' : 'enemy');
-        if (!defenderWord.getFirstLivingLetter()) {
-          if (this.onWordWin) this.onWordWin(attackerWord === this.playerBattleWord ? 'player' : 'enemy');
-          this._running = false;
-          return;
+        this.handleAttack( attacker, defender, attackerWord, defenderWord );
+    }
+  }
+
+  handleAttack( attacker, defender, attackerBW, defenderBW ) {
+    defender.takeDamage(attacker.attack);
+    if (defender.health <= 0) {
+        defenderBW.removeLetter(0);
+        if (!defenderBW.getFirstLivingLetter()) {
+        if (this.onWordWin) this.onWordWin( this.isPlayerTurn );
+        this._running = false;
+        return;
         }
-      }
-      this.turn = this.turn === 'player' ? 'enemy' : 'player';
-      if (this._running && this.delayFn) {
+    }
+    // Next turn
+    this.isPlayerTurn = !this.isPlayerTurn;
+    if (this._running && this.delayFn) {
         this.delayFn(() => this._stepLoop(), this.delayMs);
-      }
     }
   }
 }

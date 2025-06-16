@@ -127,10 +127,10 @@ export class BattleLetter extends Phaser.GameObjects.Container {
         onComplete: () => graphics.destroy()
       });
     }
-    this.destroy();
   }
 
   destroy(fromScene) {
+    this.explode();
     this.letter.destroy();
     this.healthBar.destroy();
     super.destroy(fromScene);
@@ -174,9 +174,6 @@ export class BattleWord extends Phaser.GameObjects.Container {
   }
 
   setOrigin(x, y) {
-    this._originX = x;
-    this._originY = y;
-    // super.setOrigin(x, y);
     return this;
   }
 

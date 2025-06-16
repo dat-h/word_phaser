@@ -216,24 +216,16 @@ class MainScene extends Phaser.Scene {
 
   startBattle(playerBattleWord, enemyBattleWord) {
     this.battleEngine = new BattleEngine(playerBattleWord, enemyBattleWord, {
-      onAttack: (attacker, defender, attackerWord, defenderWord, turn, next) => {
-        // Find BattleWords and letter indices
-        const attackerBW = attackerWord;
-        const defenderBW = defenderWord;
-        const attackerIdx = attackerBW.letters.indexOf(attacker);
-        const defenderIdx = defenderBW.letters.indexOf(defender);
-        this.animateAttack(attackerBW, defenderBW, attackerIdx, defenderIdx, attacker, defender, next);
+      onAttack: (attacker, defender, next) => {
+        this.animateAttack( attacker, defender, next);
       },
-      onLetterDestroyed: (letter, side) => this.animateLetterDestroyed(letter, side),
-      onWordWin: (side) => this.showBattleResult(side),
+      onWordWin: (isPlayerSide) => this.showBattleResult(isPlayerSide),
       delayFn: (fn, ms) => this.time.delayedCall(ms, fn)
     });
     this.battleEngine.start();
   }
 
-  animateAttack(attackerBW, defenderBW, attackerIdx, defenderIdx, attacker, defender, onComplete) {
-    const attackerLetter = attackerBW.letters[attackerIdx];
-    const defenderLetter = defenderBW.letters[defenderIdx];
+  animateAttack( attackerLetter, defenderLetter, onComplete) {
     const start = attackerLetter.getWorldTransformMatrix().transformPoint(0, 0);
     const end = defenderLetter.getWorldTransformMatrix().transformPoint(0, 0);
     // Play attack sound
@@ -249,29 +241,19 @@ class MainScene extends Phaser.Scene {
         particle.destroy();
         // Play damage sound
         this.sound.play('damage', { volume: 0.5 });
-        defenderLetter.showDamage(attacker.attack);
+        defenderLetter.showDamage(attackerLetter.attack);
         this.time.delayedCall(200, onComplete);
       }
     });
   }
 
-  animateLetterDestroyed(letter, side) {
-    // Find the BattleWord and letter index
-    const bw = side === 'player' ? this.playerBattleWord : this.enemyBattleWord;
-    const idx = bw.letters.indexOf(letter);
-    if (idx === -1) return;
-    const target = bw.letters[idx];
-    target.explode();
-    // Remove letter from BattleWord (already handled by engine, so just visual)
-  }
-
-  showBattleResult(side) {
+  showBattleResult(isPlayerSide) {
     this.battleInProgress = false;
     this.winText = this.add.text(
       this.cameras.main.width / 2,
       this.cameras.main.height / 2,
-      side === 'player' ? 'You Win!' : 'Enemy Wins!',
-      { font: '32px Courier New', fill: '#fff' }
+      isPlayerSide ? 'You Win!' : 'Enemy Wins!',
+      { font: '32px Arial', fill: '#fff' }
     ).setOrigin(0.5);
 
     if (this.startText) this.startText.setVisible(true);
