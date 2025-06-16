@@ -6,7 +6,7 @@ function isVowel(char) {
 
 export class BattleEngine {
   constructor(playerBattleWord, enemyBattleWord, {
-    onAttack, onLetterDestroyed, onWordWin, delayFn, delayMs = 700
+    onAttack, onLetterDestroyed, onWordWin, delayFn, delayMs = 400
   } = {}) {
     this.playerBattleWord = playerBattleWord;
     this.enemyBattleWord = enemyBattleWord;

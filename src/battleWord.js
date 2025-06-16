@@ -97,10 +97,10 @@ export class BattleLetter extends Phaser.GameObjects.Container {
   }
 
   explode() {
-    // Play explode sound if available
-    if (this.scene.sound && this.scene.sound.get('explode')) {
-      this.scene.sound.play('explode', { volume: 0.6 });
-    }
+    // Play explode sound
+    if (this.scene.sound) {
+        this.scene.sound.play('explode', { volume: 0.8 });
+    }    
     // Dazzling explosion with glowing particles in random colors (no setShadow)
     const pos = this.getWorldTransformMatrix().transformPoint(0, 0);
     const particleCount = 18;

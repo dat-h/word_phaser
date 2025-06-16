@@ -10,6 +10,8 @@ class MainScene extends Phaser.Scene {
   preload() {
     // Load the bitmap font (using a placeholder PNG, user should replace with their own)
     this.load.bitmapFont('nokia16', 'nokia16.png', 'nokia16.xml');
+    this.font = 'nokia16';
+    this.fontSize = 32;
 
     // Load sound effects
     this.load.audio('attack', 'assets/sfx/attack.mp3');
@@ -22,41 +24,7 @@ class MainScene extends Phaser.Scene {
   create() {
     // Starfield background
     this.createStarfield();
-
-    // Display 'welcome' at the top center as BattleWord
-    const welcomeText = 'war game';
-    const font = 'nokia16';
-    const fontSize = 32;
-    const startX = this.cameras.main.width / 2;
-    this.gameTitle = this.add.battleWord(
-      startX,
-      30,
-      font,
-      welcomeText,
-      fontSize
-    ).setOrigin(0.5, 0);
-
-    // Display the word 'start' in the center of the screen using the bitmap font
-    this.startText = this.add.bitmapText(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2 + 100,
-      font,
-      'start',
-      fontSize + 10
-    ).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-    this.startText.on('pointerdown', () => {
-      this.startMainGame();
-    });
-
-    const bottomY = this.cameras.main.height - 60;
-    this.versionText = this.add.bitmapText(
-      this.cameras.main.width / 2,
-      bottomY,
-      font,
-      'v 1.0 a3',
-      fontSize - 10
-    ).setOrigin(0.5, 0);
+    this.showMainMenu();
   }
 
   createStarfield() {
@@ -81,18 +49,70 @@ class MainScene extends Phaser.Scene {
       this.bgm = this.sound.add('bgm', { loop: true, volume: 0.5 });
       this.bgm.play();
     }
-    // Hide start and welcome text
-    if (this.startText) this.startText.setVisible(false);
-    if (this.gameTitle) this.gameTitle.setVisible(false);
 
+    if (this.playerBattleWord) this.playerBattleWord.destroy();
+    if (this.enemyBattleWord) this.enemyBattleWord.destroy();
+    if (this.winText) this.winText.destroy();
     // Show the enter word screen
     this.showEnterWordScreen();
   }
 
+  clearScreen() {
+    // Hide start and welcome text
+    if (this.startText) this.startText.setVisible(false);
+    if (this.gameTitle) this.gameTitle.setVisible(false);
+
+        // Hide enter word UI        
+    if (this.enterWordTitle) this.enterWordTitle.setVisible(false);
+    if (this.upcomingWordLabel) this.upcomingWordLabel.setVisible(false);
+    if (this.letterSlots) this.letterSlots.forEach(l => l.setVisible(false));
+    if (this.letterSlotOverlay) this.letterSlotOverlay.setVisible(false);
+    if (this.upcomingWordText) this.upcomingWordText.setVisible(false);
+
+    if (this.playerBattleWord) this.playerBattleWord.setVisible(false);
+    if (this.enemyBattleWord) this.enemyBattleWord.setVisible(false);
+  }
+
+  showMainMenu() {
+    // Hide all elements
+    this.clearScreen()
+
+    // Display 'welcome' at the top center as BattleWord
+    const welcomeText = 'war dle';
+    const startX = this.cameras.main.width / 2;
+    this.gameTitle = this.add.battleWord(
+      startX,
+      80,
+      this.font,
+      welcomeText,
+      this.fontSize
+    ).setOrigin(0.5, 0);
+
+    // Display the word 'start' in the center of the screen using the bitmap font
+    this.startText = this.add.bitmapText(
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2 + 150,
+      this.font,
+      'play',
+      this.fontSize + 10
+    ).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    this.startText.on('pointerdown', () => {
+      this.startMainGame();
+    });
+
+    const bottomY = this.cameras.main.height - 60;
+    this.versionText = this.add.bitmapText(
+      this.cameras.main.width / 2,
+      bottomY,
+      this.font,
+      'v 1.0 a3',
+      this.fontSize - 10
+    ).setOrigin(0.5, 0);
+  }
+
   showEnterWordScreen() {
-    // Display 'Enter word' at the top
-    const font = 'nokia16';
-    const fontSize = 32;
+    this.clearScreen()
 
     // Example dictionary of valid words
     this.dictionary = ['apple', 'grape', 'peach', 'melon', 'lemon', 'berry', 'mango', 'plums', 'chess', 'words'];
@@ -103,22 +123,21 @@ class MainScene extends Phaser.Scene {
     this.upcomingWordLabel = this.add.bitmapText(
       this.cameras.main.width / 2,
       topY,
-      font,
+      this.font,
       'upcoming word:',
-      fontSize
+      this.fontSize
     ).setOrigin(0.5, 0);
 
-    this.upcomingWord = Phaser.Utils.Array.GetRandom(this.dictionary);
-    this.enemyWord = this.upcomingWord;
+    const upcomingWord = Phaser.Utils.Array.GetRandom(this.dictionary);
+    this.enemyWord = upcomingWord;
     const upcomingStartX = this.cameras.main.width / 2;
     this.upcomingWordText = this.add.battleWord(
       upcomingStartX,
       topY + 36,
-      font,
-      this.upcomingWord,
-      fontSize
+      this.font,
+      upcomingWord,
+      this.fontSize
     ).setOrigin(0.5, 0); 
-
 
     // Focus invisible input for keyboard capture
     if (window.focusInvisibleInput) {
@@ -129,9 +148,9 @@ class MainScene extends Phaser.Scene {
     this.enterWordTitle = this.add.bitmapText(
       this.cameras.main.width / 2,
       slotsY - 60,
-      font,
+      this.font,
       'Enter word',
-      fontSize
+      this.fontSize
     ).setOrigin(0.5, 0);
 
     // Display 5 underscores for the word slots
@@ -143,16 +162,16 @@ class MainScene extends Phaser.Scene {
       const slot = this.add.bitmapText(
         startX + i * slotSpacing,
         slotsY,
-        font,
+        this.font,
         '_',
-        fontSize
+        this.fontSize
       ).setOrigin(0.5);
       this.letterSlots.push(slot);
     }
 
     // Add invisible clickable box overlay over the letter slots
     const overlayWidth = slotSpacing * 5;
-    const overlayHeight = fontSize + 16;
+    const overlayHeight = this.fontSize + 16;
     this.letterSlotOverlay = this.add.rectangle(
       this.cameras.main.width / 2,
       slotsY,
@@ -173,23 +192,18 @@ class MainScene extends Phaser.Scene {
 
   }
 
+
   // When leaving EnterWordScreen (e.g., after valid/invalid entry or moving to next screen)
-  showWavyWordScreen() {
+  showBattleScreen() {
     // Hide enter word UI
-    if (this.enterWordTitle) this.enterWordTitle.setVisible(false);
-    if (this.upcomingWordLabel) this.upcomingWordLabel.setVisible(false);
-    if (this.letterSlots) this.letterSlots.forEach(l => l.setVisible(false));
-    if (this.letterSlotOverlay) this.letterSlotOverlay.setVisible(false);
-    if (this.upcomingWordText) this.upcomingWordText.setVisible(false);
+    this.clearScreen()
 
     // Display the entered word and enemy word as BattleWords
-    const font = 'nokia16';
-    const fontSize = 32;
     const centerX = this.cameras.main.width / 2;
     const playerY = this.cameras.main.height / 2 + 80;
     const enemyY = this.cameras.main.height / 2 - 80;
-    this.playerBattleWord = this.add.battleWord(centerX, playerY, font, this.battleWord.toString(), fontSize).setOrigin(0.5);
-    this.enemyBattleWord = this.add.battleWord(centerX, enemyY, font, this.enemyWord.toString(), fontSize).setOrigin(0.5);
+    this.playerBattleWord = this.add.battleWord(centerX, playerY, this.font, this.battleWord.toString(), this.fontSize).setOrigin(0.5);
+    this.enemyBattleWord = this.add.battleWord(centerX, enemyY, this.font, this.enemyWord.toString(), this.fontSize).setOrigin(0.5);
 
     // Start the battle
     this.startBattle(this.playerBattleWord, this.enemyBattleWord);
@@ -234,7 +248,7 @@ class MainScene extends Phaser.Scene {
       onComplete: () => {
         particle.destroy();
         // Play damage sound
-        // this.sound.play('damage', { volume: 0.5 });
+        this.sound.play('damage', { volume: 0.5 });
         defenderLetter.showDamage(attacker.attack);
         this.time.delayedCall(200, onComplete);
       }
@@ -247,19 +261,20 @@ class MainScene extends Phaser.Scene {
     const idx = bw.letters.indexOf(letter);
     if (idx === -1) return;
     const target = bw.letters[idx];
-    this.sound.play('explode', { volume: 0.8 });
     target.explode();
     // Remove letter from BattleWord (already handled by engine, so just visual)
   }
 
   showBattleResult(side) {
     this.battleInProgress = false;
-    this.add.text(
+    this.winText = this.add.text(
       this.cameras.main.width / 2,
       this.cameras.main.height / 2,
       side === 'player' ? 'You Win!' : 'Enemy Wins!',
-      { font: '32px Arial', fill: '#fff' }
+      { font: '32px Courier New', fill: '#fff' }
     ).setOrigin(0.5);
+
+    if (this.startText) this.startText.setVisible(true);
   }
 
   handleWordInput(event) {
@@ -286,8 +301,8 @@ class MainScene extends Phaser.Scene {
     const word = this.enteredWord.toLowerCase();
     try {
       const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-      const data = await res.json();
-      if (data.title === 'No Definitions Found') {
+    //   const data = await res.json();
+      if (!res.ok) {
         this.flashRedOverlay();
         this.enteredWord = '';
         for (let i = 0; i < this.letterSlots.length; i++) {
@@ -297,7 +312,7 @@ class MainScene extends Phaser.Scene {
       }
       this.input.keyboard.off('keydown', this.handleWordInput, this);
       this.battleWord = this.enteredWord;
-      this.showWavyWordScreen();
+      this.showBattleScreen();
     } catch (e) {
       // On error, treat as invalid
       this.flashRedOverlay();
@@ -340,20 +355,6 @@ class MainScene extends Phaser.Scene {
           star.y = 0;
           star.x = Phaser.Math.Between(0, this.cameras.main.width);
         }
-      }
-    }
-    // Animate 'welcome' in a wavy pattern
-    if (this.welcomeLetters) {
-      for (let i = 0; i < this.welcomeLetters.length; i++) {
-        const letter = this.welcomeLetters[i];
-        letter.y = 40 + Math.sin(time / 200 + i * 0.5) * 10;
-      }
-    }
-    // Animate entered word in a wavy pattern
-    if (this.wavyWordActive && this.wavyLetters) {
-      for (let i = 0; i < this.wavyLetters.length; i++) {
-        const letter = this.wavyLetters[i];
-        letter.y = this.cameras.main.height / 2 + Math.sin(time / 200 + i * 0.5) * 10;
       }
     }
   }    
