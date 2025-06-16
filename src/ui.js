@@ -78,6 +78,15 @@ class MainScene extends Phaser.Scene {
     // Hide all elements
     this.clearScreen()
 
+    // display some debugging text
+    this.winText = this.add.text(
+      this.cameras.main.width / 2,
+      this.cameras.main.height - 20,
+      'debugging text',
+      { font: '10px Courier New', fill: '#fff' }
+    ).setOrigin(0.5);
+
+
     // Display 'welcome' at the top center as BattleWord
     const welcomeText = 'war dle';
     const startX = this.cameras.main.width / 2;

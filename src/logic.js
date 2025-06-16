@@ -14,7 +14,6 @@ export class BattleEngine {
     this.onWordWin = onWordWin;
     this.delayFn = delayFn;
     this.delayMs = delayMs;
-    // this.turn = 'player'; // 'player' or 'enemy'
     this.isPlayerTurn = true
     this._running = false;
   }
