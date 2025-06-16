@@ -30,40 +30,70 @@ export class BattleEngine {
 
   _stepLoop() {
     if (!this._running) return;
-    let playerLetter = this.playerBattleWord.getFirstLivingLetter();
-    let enemyLetter = this.enemyBattleWord.getFirstLivingLetter();
-    if (!playerLetter || !enemyLetter) return;
-    let attacker, defender, attackerWord, defenderWord;
-    if ( this.isPlayerTurn ) {
-      attackerWord = this.playerBattleWord;
-      defenderWord = this.enemyBattleWord;
-      attacker = playerLetter;
-      defender = enemyLetter;
-    } else {
-      attackerWord = this.enemyBattleWord;
-      defenderWord = this.playerBattleWord;
-      attacker = enemyLetter;
-      defender = playerLetter;
-    }
-    // UI callback for attack
-    if (this.onAttack) {
-      this.onAttack(attacker, defender, () => {
-        this.handleAttack( attacker, defender, attackerWord, defenderWord );
-      });
-    } else {
-      // No animation, just run logic
-        this.handleAttack( attacker, defender, attackerWord, defenderWord );
-    }
+    const attackerWord = this.isPlayerTurn ? this.playerBattleWord : this.enemyBattleWord;
+    const defenderWord = this.isPlayerTurn ? this.enemyBattleWord : this.playerBattleWord;
+    const livingAttackers = attackerWord.letters.filter(l => l.health > 0);
+    const livingDefenders = () => defenderWord.letters.filter(l => l.health > 0);
+    let attackIndex = 0;
+    const doNextAttack = () => {
+      if (!this._running) return;
+      // End turn if defender is already defeated
+      if (livingDefenders().length === 0) {
+        if (this.onWordWin) this.onWordWin(this.isPlayerTurn);
+        this._running = false;
+        return;
+      }
+      if (attackIndex >= livingAttackers.length) {
+        // All attacks done, switch turn
+        this.isPlayerTurn = !this.isPlayerTurn;
+        if (this._running && this.delayFn) {
+          this.delayFn(() => this._stepLoop(), this.delayMs);
+        }
+        return;
+      }
+      const attacker = livingAttackers[attackIndex];
+      // Find defender with highest index <= attacker's index
+      const defenders = livingDefenders();
+      const possible = defenders.filter(d => d.index <= attacker.index);
+      if (possible.length === 0) {
+        // No valid defender, skip this attacker
+        attackIndex++;
+        doNextAttack();
+        return;
+      }
+      // Defender with highest index <= attacker's index
+      const defender = possible.reduce((a, b) => (a.index > b.index ? a : b));
+      // Animate or resolve attack
+      const onAttackDone = () => {
+        defender.takeDamage(attacker.attack);
+        if (defender.health <= 0) {
+          defenderWord.removeLetter(defender.index);
+          if (livingDefenders().length === 0) {
+            if (this.onWordWin) this.onWordWin(this.isPlayerTurn);
+            this._running = false;
+            return;
+          }
+        }
+        attackIndex++;
+        doNextAttack();
+      };
+      if (this.onAttack) {
+        this.onAttack(attacker, defender, onAttackDone);
+      } else {
+        onAttackDone();
+      }
+    };
+    doNextAttack();
   }
 
   handleAttack( attacker, defender, attackerBW, defenderBW ) {
     defender.takeDamage(attacker.attack);
     if (defender.health <= 0) {
-        defenderBW.removeLetter(0);
+        defenderBW.removeLetter(defender.index);
         if (!defenderBW.getFirstLivingLetter()) {
-        if (this.onWordWin) this.onWordWin( this.isPlayerTurn );
-        this._running = false;
-        return;
+            if (this.onWordWin) this.onWordWin( this.isPlayerTurn );
+            this._running = false;
+            return;
         }
     }
     // Next turn

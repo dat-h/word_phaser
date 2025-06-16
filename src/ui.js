@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BattleEngine } from './logic.js';
 import { BattleWord } from './battleWord.js';
+import { LoadingScene } from './loadingScene.js';
 
 class MainScene extends Phaser.Scene {
   constructor() {
@@ -9,16 +10,16 @@ class MainScene extends Phaser.Scene {
 
   preload() {
     // Load the bitmap font (using a placeholder PNG, user should replace with their own)
-    this.load.bitmapFont('nokia16', 'nokia16.png', 'nokia16.xml');
+    // this.load.bitmapFont('nokia16', 'nokia16.png', 'nokia16.xml');
     this.font = 'nokia16';
     this.fontSize = 32;
 
     // Load sound effects
-    this.load.audio('attack', 'assets/sfx/attack.mp3');
-    this.load.audio('damage', 'assets/sfx/damage.mp3');
-    this.load.audio('explode', 'assets/sfx/explode.mp3');
-    // Load background music
-    this.load.audio('bgm', 'assets/music/bg.mp3');
+    // this.load.audio('attack', 'assets/sfx/attack.mp3');
+    // this.load.audio('damage', 'assets/sfx/damage.mp3');
+    // this.load.audio('explode', 'assets/sfx/explode.mp3');
+    // // Load background music
+    // this.load.audio('bgm', 'assets/music/bg.mp3');
   }
 
   create() {
@@ -106,7 +107,7 @@ class MainScene extends Phaser.Scene {
       this.cameras.main.width / 2,
       bottomY,
       this.font,
-      'v 1.0 a3',
+      'v 1.0 a5',
       this.fontSize - 10
     ).setOrigin(0.5, 0);
   }
@@ -364,7 +365,7 @@ const config = {
   height: 600,
   backgroundColor: '#222',
   parent: 'app',
-  scene: MainScene
+  scene: [LoadingScene, MainScene]
 };
 
 new Phaser.Game(config);

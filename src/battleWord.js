@@ -5,10 +5,11 @@ function isVowel(char) {
 }
 
 export class BattleLetter extends Phaser.GameObjects.Container {
-  constructor(scene, x, y, font, char, fontSize = 32) {
+  constructor(scene, x, y, font, char, fontSize = 32, index = 0) {
     super(scene, x, y);
     scene.add.existing(this);
     this.char = char;
+    this.index = index; // Track index in parent BattleWord
     this.maxhealth = char.charCodeAt(0);
     this.health = char.charCodeAt(0);
     this.attack = isVowel(char) ? 100 : 5;
@@ -160,11 +161,12 @@ export class BattleWord extends Phaser.GameObjects.Container {
     this.removeAll(true);
     this.letters = [];
     for (let i = 0; i < wordString.length; i++) {
-      const letter = new BattleLetter(this.scene, i * this.spacing, 0, this.font, wordString[i], this.fontSize);
+      const letter = new BattleLetter(this.scene, i * this.spacing, 0, this.font, wordString[i], this.fontSize, i);
       this.add(letter);
       this.letters.push(letter);
     }
     this._layoutLetters();
+    this._updateLetterIndices();
   }
 
   _layoutLetters() {
@@ -184,15 +186,18 @@ export class BattleWord extends Phaser.GameObjects.Container {
   }
 
   addLetter(char, index) {
-    const letter = new BattleLetter(this.scene, 0, 0, this.font, char, this.fontSize);
+    let letter;
     if (index === undefined || index >= this.letters.length) {
+      letter = new BattleLetter(this.scene, 0, 0, this.font, char, this.fontSize, this.letters.length);
       this.letters.push(letter);
       this.add(letter);
     } else {
+      letter = new BattleLetter(this.scene, 0, 0, this.font, char, this.fontSize, index);
       this.letters.splice(index, 0, letter);
       this.addAt(letter, index);
     }
     this._layoutLetters();
+    this._updateLetterIndices();
     return letter;
   }
 
@@ -202,6 +207,7 @@ export class BattleWord extends Phaser.GameObjects.Container {
       letter.destroy();
       this.letters.splice(index, 1);
       this._layoutLetters();
+      this._updateLetterIndices();
     }
   }
 
@@ -211,6 +217,13 @@ export class BattleWord extends Phaser.GameObjects.Container {
       this.letters[indexA] = this.letters[indexB];
       this.letters[indexB] = temp;
       this._layoutLetters();
+      this._updateLetterIndices();
+    }
+  }
+
+  _updateLetterIndices() {
+    for (let i = 0; i < this.letters.length; i++) {
+      this.letters[i].index = i;
     }
   }
 
