@@ -5,12 +5,11 @@ function isVowel(char) {
 }
 
 export class BattleEngine {
-  constructor(playerBattleWord, enemyBattleWord, debugText, {
+  constructor(playerBattleWord, enemyBattleWord, {
     onAttack, onBuff, onWordWin, delayFn, delayMs = 400
   } = {}) {
     this.playerBattleWord = playerBattleWord;
     this.enemyBattleWord = enemyBattleWord;
-    this.debugText = debugText;
     this.onAttack = onAttack;
     this.onBuff = onBuff;
     this.onWordWin = onWordWin;
@@ -70,7 +69,6 @@ export class BattleEngine {
     let actionIdx = 0;
     const doNextAction = () => {
         if (!this._running) return;
-        console.log("count: " + actionIdx + ": " + defenders.length );
 
         if (actionIdx >= defenders.length) {
             // All actions done, proceed to attacks phase
@@ -78,7 +76,7 @@ export class BattleEngine {
             if (this.delayFn) {
                 this.delayFn(() => {
                     doNextAttack()
-                }, this.delayMs);
+                }, this.delayMs+200);
             }        
             return;
         }
@@ -99,7 +97,6 @@ export class BattleEngine {
         actionIdx++;
         if (this.delayFn) {
             this.delayFn(() => {
-                console.log('Timer has completed!');
                 doNextAction()
             }, 500);
         }

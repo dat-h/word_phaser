@@ -28,7 +28,11 @@ export class LoadingScene extends Phaser.Scene {
     this.load.audio('attack', 'assets/sfx/attack.mp3');
     this.load.audio('damage', 'assets/sfx/damage.mp3');
     this.load.audio('explode', 'assets/sfx/explode.mp3');
+    this.load.audio('heal', 'assets/sfx/heal.mp3');
     this.load.audio('bgm', 'assets/music/bg.mp3');
+
+    // this.load.image('spark', 'assets/particles/blue.png');
+    this.load.atlas('flares', 'assets/particles/flares.png', 'assets/particles/flares.json');
   }
 
   create() {

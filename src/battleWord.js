@@ -126,29 +126,41 @@ export class BattleLetter extends Phaser.GameObjects.Container {
     // Dazzling explosion with glowing particles in random colors (no setShadow)
     const pos = this.getWorldTransformMatrix().transformPoint(0, 0);
     const particleCount = 18;
-    for (let i = 0; i < particleCount; i++) {
-      const angle = (2 * Math.PI * i) / particleCount;
-      const speed = Phaser.Math.Between(80, 160);
-      const color = Phaser.Display.Color.RandomRGB();
-      // Create a graphics object for a glowing particle
-      const graphics = this.scene.add.graphics({ x: pos.x, y: pos.y });
-      // Draw glow (large, transparent)
-      graphics.fillStyle(color.color, 0.25);
-      graphics.fillCircle(0, 0, Phaser.Math.Between(16, 22));
-      // Draw core (smaller, opaque)
-      graphics.fillStyle(color.color, 1);
-      graphics.fillCircle(0, 0, Phaser.Math.Between(4, 7));
-      this.scene.tweens.add({
-        targets: graphics,
-        x: pos.x + Math.cos(angle) * speed,
-        y: pos.y + Math.sin(angle) * speed,
-        alpha: 0,
-        scale: { from: 1, to: Phaser.Math.FloatBetween(1.5, 2.2) },
-        duration: Phaser.Math.Between(350, 600),
-        ease: 'Cubic.easeOut',
-        onComplete: () => graphics.destroy()
-      });
-    }
+
+    const emitter = this.scene.add.particles(pos.x, pos.y, 'flares', {
+        frame: [ 'red', 'yellow', 'green' ],
+        lifespan: 600,
+        speed: { min: 150, max: 250 },
+        scale: { start: 0.3, end: 0 },
+        gravityY: 150,
+        blendMode: 'ADD',
+        emitting: false
+    });
+    emitter.explode(particleCount);
+
+    // for (let i = 0; i < particleCount; i++) {
+    //   const angle = (2 * Math.PI * i) / particleCount;
+    //   const speed = Phaser.Math.Between(80, 160);
+    //   const color = Phaser.Display.Color.RandomRGB();
+    //   // Create a graphics object for a glowing particle
+    //   const graphics = this.scene.add.graphics({ x: pos.x, y: pos.y });
+    //   // Draw glow (large, transparent)
+    //   graphics.fillStyle(color.color, 0.25);
+    //   graphics.fillCircle(0, 0, Phaser.Math.Between(16, 22));
+    //   // Draw core (smaller, opaque)
+    //   graphics.fillStyle(color.color, 1);
+    //   graphics.fillCircle(0, 0, Phaser.Math.Between(4, 7));
+    //   this.scene.tweens.add({
+    //     targets: graphics,
+    //     x: pos.x + Math.cos(angle) * speed,
+    //     y: pos.y + Math.sin(angle) * speed,
+    //     alpha: 0,
+    //     scale: { from: 1, to: Phaser.Math.FloatBetween(1.5, 2.2) },
+    //     duration: Phaser.Math.Between(350, 600),
+    //     ease: 'Cubic.easeOut',
+    //     onComplete: () => graphics.destroy()
+    //   });
+    // }
   }
 
   destroy(fromScene) {
@@ -163,6 +175,7 @@ export class BattleWord extends Phaser.GameObjects.Container {
   constructor(scene, x, y, font, wordString, fontSize = 32, options = {}) {
     super(scene, x, y);
     scene.add.existing(this);
+    this.timeoffset = Phaser.Math.Between(0, 100);
     this.font = font;
     this.fontSize = fontSize;
     this.spacing = options.spacing || fontSize;
@@ -254,7 +267,7 @@ export class BattleWord extends Phaser.GameObjects.Container {
 
   updateWavy(time) {
     for (let i = 0; i < this.letters.length; i++) {
-      this.letters[i].y = Math.sin(time / this.frequency + i * 0.5) * this.amplitude;
+      this.letters[i].y = Math.sin( (time + this.timeoffset) / this.frequency + i * 0.5) * this.amplitude;
     }
   }
 

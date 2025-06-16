@@ -25,6 +25,8 @@ class MainScene extends Phaser.Scene {
   create() {
     // Starfield background
     this.createStarfield();
+    // this.particles = this.add.particles('spark');
+
     this.showMainMenu();
   }
 
@@ -116,14 +118,13 @@ class MainScene extends Phaser.Scene {
       this.cameras.main.width / 2,
       bottomY,
       this.font,
-      'v 1.0 a5',
+      'v 1.0 a6',
       this.fontSize - 10
     ).setOrigin(0.5, 0);
   }
 
   showEnterWordScreen() {
     this.clearScreen()
-    this.debugText.setText( "enter word");
     // Example dictionary of valid words
     this.dictionary = ['apple', 'grape', 'peach', 'melon', 'lemon', 'berry', 'mango', 'plums', 'chess', 'words'];
 
@@ -225,7 +226,7 @@ class MainScene extends Phaser.Scene {
   }
 
   startBattle(playerBattleWord, enemyBattleWord) {
-    this.battleEngine = new BattleEngine(playerBattleWord, enemyBattleWord, this.debugText, {
+    this.battleEngine = new BattleEngine(playerBattleWord, enemyBattleWord, {
       onAttack: (attacker, defender, next) => {
         this.animateAttack( attacker, defender, next);
       },
@@ -240,32 +241,32 @@ class MainScene extends Phaser.Scene {
 animateBuff(caster, target, onComplete) {
     const start = caster.getWorldTransformMatrix().transformPoint(0, 0);
     const end = target.getWorldTransformMatrix().transformPoint(0, 0);
+    this.sound.play('heal', { volume: 0.5 });
 
     // Create a glowing blue particle (circle) that travels from caster to target
-    const particle = this.add.circle(start.x, start.y, 8, 0x00bfff, 0.8);
-    particle.setStrokeStyle(2, 0xffffff, 0.7);
+    const particle = this.add.sprite(start.x, start.y, 'flares', 'blue');
 
     // Tween the particle to the target
     this.tweens.add({
         targets: particle,
         x: end.x,
         y: end.y,
-        scale: { from: 1, to: 1.3 },
+        scale: { from: 0.5, to: 0.7 },
         alpha: { from: 0.8, to: 1 },
         duration: 350,
         ease: 'Cubic.easeOut',
         onComplete: () => {
             particle.destroy();
-
             // Glowing blue light effect on the target
-            const glow = this.add.circle(end.x, end.y, 22, 0x00bfff, 0.5)
+            const glow = this.add.sprite(end.x, end.y, 'flares', 'blue')
                 .setDepth(50)
-                .setAlpha(0.7);
+                .setAlpha(0.7)
+                .setScale(0.7);
             glow.setBlendMode(Phaser.BlendModes.ADD);
 
             this.tweens.add({
                 targets: glow,
-                scale: { from: 1, to: 1.7 },
+                scale: { from: 0.7, to: 1.7 },
                 alpha: { from: 0.7, to: 0 },
                 duration: 400,
                 ease: 'Sine.easeOut',
@@ -285,7 +286,17 @@ animateBuff(caster, target, onComplete) {
     // Play attack sound
     this.sound.play('attack', { volume: 0.5 });
     // Particle (projectile) instead of laser
-    const particle = this.add.circle(start.x, start.y, 6, 0xff0000, 1);
+    // const particle = this.add.circle(start.x, start.y, 6, 0xff0000, 1);
+
+    const particle = this.add.sprite(start.x, start.y, 'flares', 'yellow');
+
+    // Optional: scale, alpha, blend mode for glow effect
+    particle.setScale(0.25);
+    particle.setAlpha(1);
+    particle.setTint(0xffffff); // White tint (lighter)
+    particle.setBlendMode(Phaser.BlendModes.ADD);
+
+
     this.tweens.add({
       targets: particle,
       x: end.x,
@@ -414,6 +425,7 @@ MainScene.prototype.update = function (time, delta) {
 
 const config = {
   type: Phaser.AUTO,
+//   type: Phaser.WEBGL,
   width: 320,
   height: 600,
   backgroundColor: '#222',
